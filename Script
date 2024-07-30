@@ -1,0 +1,64 @@
+import googlemaps 
+import json
+import requests
+import os
+
+# Replace with your Google API key
+API_KEY = ''#Chave API google
+
+# Initialize the client
+gmaps = googlemaps.Client(key=API_KEY)
+
+# Function to search for an address and save the information
+
+
+def search_and_save_info(address, output_dir):
+    # Create the output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Perform the search
+    places_result = gmaps.places(query=address)
+
+    if not places_result['results']:
+        print(f"No results found for address: {address}")
+        return
+
+    for idx, place in enumerate(places_result['results']):
+        place_id = place['place_id']
+
+        # Get place details
+        place_details = gmaps.place(place_id=place_id)
+
+        # Directory for this place
+        place_dir = os.path.join(output_dir, f"place_{idx + 1}")
+        if not os.path.exists(place_dir):
+            os.makedirs(place_dir)
+
+        # Save place details to a JSON file
+        with open(os.path.join(place_dir, 'place_details.json'), 'w') as f:
+            json.dump(place_details, f, indent=4)
+
+        # Retrieve and save photos
+        if 'photos' in place_details['result']:
+            photos = place_details['result']['photos']
+            for i, photo in enumerate(photos):
+                photo_reference = photo['photo_reference']
+                photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_reference}&key={API_KEY}"
+
+                # Download the photo
+                response = requests.get(photo_url)
+                if response.status_code == 200:
+                    photo_path = os.path.join(place_dir, f'photo_{i + 1}.jpg')
+                    with open(photo_path, 'wb') as f:
+                        f.write(response.content)
+                    print(f"Saved photo {i + 1} for place {idx + 1}")
+                else:
+                    print(
+                        f"Failed to download photo {i + 1} for place {idx + 1}")
+
+
+# Example usage
+address = "" #indicar sua pesquisa
+output_dir = "output"
+search_and_save_info(address, output_dir)
